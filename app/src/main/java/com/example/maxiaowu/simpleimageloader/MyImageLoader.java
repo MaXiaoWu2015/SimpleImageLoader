@@ -3,14 +3,20 @@ package com.example.maxiaowu.simpleimageloader;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.support.v4.app.ActivityManagerCompat;
 import android.util.LruCache;
 import android.widget.ImageView;
 
 import com.jakewharton.disklrucache.DiskLruCache;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -18,6 +24,8 @@ import java.security.NoSuchAlgorithmException;
  * Created by maxiaowu on 16/8/7.
  */
 public class MyImageLoader {
+    private static final int DISK_CACHE_INDEX = 0;
+    private static final int IO_BUFFER_SIZE = 1024;
     private Context mContext;
     private LruCache<String,Bitmap> lruCache;
     private DiskLruCache diskLruCache;
@@ -90,12 +98,28 @@ public class MyImageLoader {
     }
     public Bitmap getBitmapFromDiskMemory(String url){
         //把url转化成key,因为图片的url里可能有特殊字符,这将影响url在安卓中的使用
+        String key=hashKeyFromUrl(url);
+        try {
+            DiskLruCache.Snapshot snapShot=diskLruCache.get(key);
+            FileInputStream inputStream= (FileInputStream) snapShot.getInputStream(DISK_CACHE_INDEX);
+            //FIXME 因为FileInputStream是有序的文件流,两次decodeStream会影响文件流的位置属性,会导致第二次得到的是null,所以通过文件流对应的文件描述符解决
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
-    public void putBitmapToDiskMemory(String url,Bitmap bitmap){
+    public void putBitmapToDiskMemory(String url,InputStream inputStream){
         String hashKey=hashKeyFromUrl(url);
         try {
             DiskLruCache.Editor editor=diskLruCache.edit(hashKey);
             if (editor!=null){
+                OutputStream outputStream=editor.newOutputStream(DISK_CACHE_INDEX);
+                BufferedOutputStream buffer=new BufferedOutputStream(outputStream,IO_BUFFER_SIZE);
+                int b;
+                while ((b=inputStream.read())!=-1){
+                    buffer.write(b);
+                }
+                editor.commit();
 
             }
         } catch (IOException e) {
@@ -131,7 +155,6 @@ public class MyImageLoader {
 
 
     public void loadImage(String url, ImageView imageView){
-
 
     }
 
