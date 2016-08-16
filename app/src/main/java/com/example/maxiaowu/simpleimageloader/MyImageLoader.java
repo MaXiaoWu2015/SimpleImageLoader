@@ -53,6 +53,7 @@ public class MyImageLoader {
         public void handleMessage(Message msg) {
             switch (msg.what){
                 case BIND_BITMAP_COMPLETE:
+                    //FIXME:解决图片重复加载的问题
                     LoaderResult result= (LoaderResult) msg.obj;
 
                     break;
