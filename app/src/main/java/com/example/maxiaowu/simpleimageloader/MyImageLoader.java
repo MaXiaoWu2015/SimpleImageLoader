@@ -5,6 +5,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Message;
+import android.os.SystemClock;
 import android.util.LruCache;
 import android.widget.ImageView;
 
@@ -28,7 +29,7 @@ import java.util.concurrent.Executors;
 /**
  * Created by maxiaowu on 16/8/7.
  */
-public class MyImageLoader {
+public class MyImageLoader{
     private static final int DISK_CACHE_INDEX = 0;
     private static final int IO_BUFFER_SIZE = 1024;
     private static final int BIND_BITMAP_COMPLETE = 0x001;
@@ -55,24 +56,29 @@ public class MyImageLoader {
                 case BIND_BITMAP_COMPLETE:
                     //FIXME:解决图片重复加载的问题
                     LoaderResult result= (LoaderResult) msg.obj;
-
+                    if (result.imageView.getTag().equals(result.url)){
+                        result.imageView.setImageBitmap(result.bitmap);
+                    }
                     break;
             }
         }
     }
 
+    private static class HolderClass{
+        public static MyImageLoader imageLoader=new MyImageLoader();
+    }
 
-    private MyImageLoader(Context context) {
-        mContext=context;
+    public static MyImageLoader getInstance(){
+        return HolderClass.imageLoader;
+    }
+    private MyImageLoader() {
+        mContext=ImageLoderApplication.context;
         mImageResizer=new ImageResizer();
         excutor= Executors.newFixedThreadPool(THREAD_COUNT);
         mHandler=new MyHandler();
         initLruCache();
         initDiskLruCache();
 
-    }
-    public static MyImageLoader build(Context context){
-        return new MyImageLoader(context);
     }
 
     private void initDiskLruCache() {
@@ -130,10 +136,15 @@ public class MyImageLoader {
         String key = hashKeyFromUrl(url);
         Bitmap bitmap = null;
         try {
-            DiskLruCache.Snapshot snapShot = diskLruCache.get(key);
-            FileInputStream inputStream = (FileInputStream) snapShot.getInputStream(DISK_CACHE_INDEX);
-            //因为FileInputStream是有序的文件流,两次decodeStream会影响文件流的位置属性,会导致第二次得到的是null,所以通过文件流对应的文件描述符解决
-            bitmap = mImageResizer.decodeSampleBitmapFromFileDescriptor(inputStream.getFD(), reqWidth, reqHeight);
+          if (diskLruCache!=null){
+              DiskLruCache.Snapshot snapShot = diskLruCache.get(key);
+            if (snapShot!=null){
+
+                FileInputStream inputStream = (FileInputStream) snapShot.getInputStream(DISK_CACHE_INDEX);
+                bitmap = mImageResizer.decodeSampleBitmapFromFileDescriptor(inputStream.getFD(), reqWidth, reqHeight);
+            }
+              //因为FileInputStream是有序的文件流,两次decodeStream会影响文件流的位置属性,会导致第二次得到的是null,所以通过文件流对应的文件描述符解决
+          }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -228,7 +239,7 @@ public class MyImageLoader {
                 }
             }
         };
-
+        excutor.execute(runnableTask);
     }
 
     private Bitmap downloadBitmapFromUrl(String urlstr){
@@ -253,6 +264,7 @@ public class MyImageLoader {
             HttpURLConnection conn= (HttpURLConnection) url.openConnection();
             InputStream input= conn.getInputStream();
             putBitmapToDiskMemory(urlstr,input);
+            SystemClock.sleep(500);
             return getBitmapFromDiskMemory(urlstr,reqWidth,reqHeight);
         } catch (MalformedURLException e) {
             e.printStackTrace();
