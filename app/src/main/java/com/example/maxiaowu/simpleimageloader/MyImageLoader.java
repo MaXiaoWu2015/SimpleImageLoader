@@ -33,6 +33,7 @@ public class MyImageLoader{
     private static final int DISK_CACHE_INDEX = 0;
     private static final int IO_BUFFER_SIZE = 1024;
     private static final int BIND_BITMAP_COMPLETE = 0x001;
+    private static final int  TAG_URL =R.id.Iv_image ;
     private Context mContext;
     private LruCache<String,Bitmap> lruCache;
     private DiskLruCache diskLruCache;
@@ -56,7 +57,7 @@ public class MyImageLoader{
                 case BIND_BITMAP_COMPLETE:
                     //FIXME:解决图片重复加载的问题
                     LoaderResult result= (LoaderResult) msg.obj;
-                    if (result.imageView.getTag().equals(result.url)){
+                    if (result!=null && result.imageView!=null &&result.imageView.getTag(TAG_URL)!=null&& result.imageView.getTag(TAG_URL).equals(result.url)){
                         result.imageView.setImageBitmap(result.bitmap);
                     }
                     break;
@@ -222,6 +223,7 @@ public class MyImageLoader{
     }
 
     public void bindBitmap(final String url, final ImageView imageview){
+        imageview.setTag(TAG_URL,url);
         Bitmap bitmap=getBitmapFromMemory(url);
         if (bitmap!=null){
             imageview.setImageBitmap(bitmap);
@@ -270,6 +272,8 @@ public class MyImageLoader{
             e.printStackTrace();
 
         } catch (IOException e) {
+            e.printStackTrace();
+        }catch (Exception e){
             e.printStackTrace();
         }
         return null;

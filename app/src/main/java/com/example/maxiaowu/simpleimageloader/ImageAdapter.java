@@ -7,16 +7,26 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
-import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by xiaowu on 2016-8-17.
  */
 public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHolder> {
     private Context mContext;
-    private ArrayList<String> dataset;
+    private List<String> dataset;
+    private IOnItemClickListener itemClickListener;
+//    private boolean isRecyclerViewIdle;
+//
+//    public void setRecyclerViewIdle(boolean recyclerViewIdle) {
+//        isRecyclerViewIdle = recyclerViewIdle;
+//    }
 
-    public ImageAdapter(Context context, ArrayList<String> dataset) {
+    public void setItemClickListener(IOnItemClickListener itemClickListener) {
+        this.itemClickListener = itemClickListener;
+    }
+
+    public ImageAdapter(Context context, List<String> dataset) {
         this.mContext=context;
         this.dataset=dataset;
     }
@@ -32,8 +42,17 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHol
 
     @Override
     public void onBindViewHolder(ImageViewHolder holder, int position) {
-        holder.imageView.setTag(dataset.get(position));
-        MyImageLoader.getInstance().bindBitmap(dataset.get(position),holder.imageView);
+
+        String url=dataset.get(position);
+        String tag= (String) holder.imageView.getTag();
+        //为了防止出现图片错乱的情况
+        if (!url.equals(tag)){
+//           holder.imageView.setImageResource(R.mipmap.ic_launcher);
+            holder.imageView.setImageResource(R.drawable.failed);
+        }
+            holder.imageView.setTag(dataset.get(position));
+            MyImageLoader.getInstance().bindBitmap(dataset.get(position),holder.imageView);
+
     }
 
     @Override
@@ -41,12 +60,22 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHol
         return dataset.size();
     }
 
-    class ImageViewHolder extends RecyclerView.ViewHolder{
+    public  class ImageViewHolder extends RecyclerView.ViewHolder{
         private ImageView imageView;
 
-        public ImageViewHolder(View itemView) {
+        public ImageViewHolder(final View itemView) {
             super(itemView);
             imageView= (ImageView) itemView.findViewById(R.id.Iv_image);
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    itemClickListener.onClick(getAdapterPosition(),getLayoutPosition());
+                }
+            });
         }
+    }
+
+    public  interface IOnItemClickListener{
+        void onClick(int adapterPosition,int layoutPosition);
     }
 }
